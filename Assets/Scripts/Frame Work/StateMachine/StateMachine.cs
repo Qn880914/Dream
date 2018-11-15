@@ -4,6 +4,11 @@ using UnityEngine;
 
 namespace FrameWork.StateMachine
 {
+    /// <summary>
+    ///     <para></para>
+    /// </summary>
+    /// <typeparam name="KT"></typeparam>
+    /// <typeparam name="OT"></typeparam>
     public class StateMachine<KT, OT> : IStateMachine<KT, OT>
     {
         private KT m_NowKey;
@@ -25,6 +30,11 @@ namespace FrameWork.StateMachine
         public KT GetCurrentState()
         {
             return m_NowKey;
+        }
+
+        public IState<KT, OT> GetState()
+        {
+            return m_NowState;
         }
 
         public void AddState(KT keyType, IState<KT, OT> state)
@@ -106,6 +116,14 @@ namespace FrameWork.StateMachine
             }
 
             Assert(isResearched);
+        }
+
+        public void OnUpdate(float deltaTime)
+        {
+            if(null != m_NowState)
+            {
+                m_NowState.OnUpdate(deltaTime);
+            }
         }
     }
 

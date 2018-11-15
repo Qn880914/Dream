@@ -9,7 +9,7 @@ namespace FrameWork.StateMachine
     /// </summary>
     /// <typeparam name="KT"></typeparam>
     /// <typeparam name="OT"></typeparam>
-    public interface IStateMachine<KT, OT>
+    public interface IStateMachine<KT, OT> : IUpdate
     {
         OT owner { get; set; }
 
