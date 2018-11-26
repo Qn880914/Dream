@@ -15,7 +15,7 @@ namespace FrameWork.Resource
         {
             base.Start();
 
-            string path = 
+            //string path = 
         }
     }
 }

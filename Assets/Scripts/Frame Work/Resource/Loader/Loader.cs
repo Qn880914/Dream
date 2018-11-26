@@ -8,8 +8,9 @@ namespace FrameWork.Resource
         {
             None, 
 
-            Loading,
-            Finish,
+            Loading,    // 正在加载中
+                
+            Finish,     // 加载完成
         }
 
         private UnityAction<Loader, float> m_ActionProgress;

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace FrameWork.Utility
 {
-    public class Singleton<T> : Disposable where T : Singleton<T>
+    public abstract class Singleton<T> : Disposable where T : Singleton<T>
     {
         private static T s_Instance;
 
@@ -27,6 +27,11 @@ namespace FrameWork.Utility
 
                 return s_Instance;
             }
+        }
+
+        private void OnApplicationQuit()
+        {
+            s_Instance = null;
         }
     }
 }
