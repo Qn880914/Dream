@@ -1,12 +1,12 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.Events;
 
 namespace FrameWork.Utility
 {
-    public class Loom : MonoBehaviour
+    public class Loom : MonoSingleton<Loom>
     {
         public struct DelayQueueItem
         {
@@ -15,34 +15,9 @@ namespace FrameWork.Utility
             public UnityAction callback;
         }
 
-        public static readonly int maxTreadCount = 10;
+        public readonly int maxThreadCount = 10;
 
-        private static int s_CurrentTreadCount;
-
-        private static bool s_Initialized;
-
-        private static object lock_helper = new object();
-
-        private static Loom s_Current;
-        public static Loom current
-        {
-            get
-            {
-                if(!s_Initialized)
-                {
-                    lock(lock_helper)
-                    {
-                        if(!s_Initialized)
-                        {
-                            Initialize();
-                            s_Initialized = true;
-                        }
-                    }
-                }
-
-                return s_CurrentLoom;
-            }
-        }
+        private int m_CurrentThreadCount;
 
         private List<UnityAction> m_Actions = new List<UnityAction>();
 
@@ -51,48 +26,83 @@ namespace FrameWork.Utility
         private List<DelayQueueItem> m_DelayQueueItems = new List<DelayQueueItem>();
 
         private List<DelayQueueItem> m_CurrentDelayQueueItems = new List<DelayQueueItem>();
-
-        private void Awake()
-        {
-            s_Current = this;
-            s_Initialized = true;
-        }
-
-        private static void Initialize()
-        {
-            if (!Application.isPlaying)
-                return;
-
-            GameObject obj = new GameObject("Loom");
-            DontDestroyOnLoad(obj);
-            s_Current = obj.AddComponent<Loom>();
-        }
-
-        public static void QueueOnMainThread(UnityAction action)
+        
+        public void QueueOnMainThread(UnityAction action)
         {
             QueueOnMainThread(action, 0f);
         }
 
-        public static void QueueOnMainThread(UnityAction action, float time)
+        public void QueueOnMainThread(UnityAction action, float time)
         {
             if(0 != time)
             {
-                lock(s_Current.m_DelayQueueItems)
+                lock(m_DelayQueueItems)
                 {
-                    s_Current.m_DelayQueueItems.Add(new DelayQueueItem { time = Time.time + time, callback = action });
+                    m_DelayQueueItems.Add(new DelayQueueItem { time = Time.time + time, callback = action });
                 }
             }
             else
             {
-                lock(current.m_Actions)
+                lock(m_Actions)
                 {
-                    s_Current.m_Actions.Add(action);
+                    m_Actions.Add(action);
                 }
             }
         }
 
-        public static Thread RunAsync(UnityAction action)
+        public Thread RunAsync(UnityAction action)
         {
+            while(m_CurrentThreadCount > maxThreadCount)
+            {
+                Thread.Sleep(1);
+            }
+
+            Interlocked.Increment(ref m_CurrentThreadCount);
+            ThreadPool.QueueUserWorkItem(RunAction, action);
+
+            return null;
+        }
+
+        private void RunAction(object param)
+        {
+            try
+            {
+                UnityAction action = param as UnityAction;
+                action.Invoke();
+            }
+            catch
+            { }
+            finally
+            {
+                Interlocked.Decrement(ref m_CurrentThreadCount);
+            }
+        }
+
+        private void Update()
+        {
+            lock(m_Actions)
+            {
+                m_CurrentActions.Clear();
+                m_CurrentActions.AddRange(m_Actions);
+                m_Actions.Clear();
+            }
+
+            foreach(var action in m_Actions)
+            {
+                action.Invoke();
+            }
+
+            lock(m_DelayQueueItems)
+            {
+                m_CurrentDelayQueueItems.Clear();
+                m_CurrentDelayQueueItems.AddRange(m_DelayQueueItems.Where(d => d.time <= Time.time));
+
+                foreach (var item in m_CurrentDelayQueueItems)
+                    m_DelayQueueItems.Remove(item);
+            }
+
+            foreach (var delayItem in m_CurrentDelayQueueItems)
+                delayItem.callback.Invoke();
         }
     }
 }

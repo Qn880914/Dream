@@ -21,8 +21,14 @@ namespace FrameWork.Helper
 
         public LZMACompressRequest() { }
 
+        public void Compress(byte[] data)
+        {
+        }
+
         private void OnComplete()
-        { }
+        {
+            m_IsDone = true;
+        }
 
         protected override void Dispose(bool disposing)
         {

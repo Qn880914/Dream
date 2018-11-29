@@ -8,14 +8,26 @@ namespace FrameWork.Utility
     {
         private static T s_Instance = null;
 
+        private static object lock_helper = new object();
+
         public static T instance
         {
             get
             {
-                //Scene内にあったら取得
-                s_Instance = s_Instance ?? (FindObjectOfType(typeof(T)) as T);
-                //TをアタッチしたGameObject生成してT取得
-                s_Instance = s_Instance ?? new GameObject(typeof(T).ToString(), typeof(T)).GetComponent<T>();
+                if(null == s_Instance)
+                {
+                    lock(lock_helper)
+                    {
+                        s_Instance = FindObjectOfType(typeof(T)) as T; 
+                        if(null == s_Instance)
+                        {
+                            GameObject obj = new GameObject(typeof(T).ToString());
+                            s_Instance = obj.AddComponent<T>();
+                            DontDestroyOnLoad(obj);
+                        }
+                    }
+                }
+
                 return s_Instance;
             }
         }
