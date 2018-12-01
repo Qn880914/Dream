@@ -68,7 +68,7 @@ namespace FrameWork.Resource
             Reset();
         }
 
-        public virtual void Reset()
+        protected virtual void Reset()
         {
             m_Path = string.Empty;
             m_CompleteCallback = null;

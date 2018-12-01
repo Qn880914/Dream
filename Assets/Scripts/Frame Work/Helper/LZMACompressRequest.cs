@@ -1,11 +1,8 @@
 ﻿using FrameWork.Utility;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 
 namespace FrameWork.Helper
 {
-    public class LZMACompressRequest : Disposable
+    public sealed class LZMACompressRequest : Disposable
     {
         private byte[] m_Bytes;
         public byte[] bytes { get { return m_Bytes; } }
@@ -21,8 +18,64 @@ namespace FrameWork.Helper
 
         public LZMACompressRequest() { }
 
+        public static LZMACompressRequest CreateCompress(byte[] data)
+        {
+            LZMACompressRequest request = new LZMACompressRequest();
+            request.Compress(data);
+
+            return request;
+        }
+
+        public static LZMACompressRequest CreateDecompress(byte[] data)
+        {
+            LZMACompressRequest request = new LZMACompressRequest();
+            request.Decompress(data);
+
+            return request;
+        }
+
         public void Compress(byte[] data)
         {
+            Loom.instance.RunAsync(()=> 
+            {
+                try
+                {
+                    m_Bytes = new byte[1];
+                    int size = LZMAHelper.Compress(data, ref m_Bytes);
+                    if (0 == size)
+                        m_Error = "Compress Failed";
+                }
+                catch (System.Exception e)
+                {
+                    m_Error = e.Message;
+                }
+                finally
+                {
+                    Loom.instance.QueueOnMainThread(OnComplete);
+                }
+            });
+        }
+
+        public void Decompress(byte [] data)
+        {
+            Loom.instance.RunAsync(()=>
+            {
+                try
+                {
+                    m_Bytes = new byte[1];
+                    int size = LZMAHelper.Decompress(data, ref m_Bytes);
+                    if (0 == size)
+                        m_Error = "Decompress Failed";
+                }
+                catch (System.Exception e)
+                {
+                    m_Error = e.Message;
+                }
+                finally
+                {
+                    Loom.instance.QueueOnMainThread(OnComplete);
+                }
+            });
         }
 
         private void OnComplete()
