@@ -216,6 +216,19 @@ namespace FrameWork.Manager
         {
             if (assetbundle.isStreamedSceneAssetBundle)
                 return;
+
+            Material[] materials = assetbundle.LoadAllAssets<Material>();
+
+            int count = materials.Length;
+            for(int i = 0; i < count; ++ i)
+            {
+                Material material = materials[i];
+                string shaderName = material.shader.name;
+                Shader newShader = Shader.Find(shaderName);
+
+                if (null != newShader)
+                    material.shader = newShader;
+            }
         }
 
         private string GetResourceName(string name)
@@ -330,6 +343,14 @@ namespace FrameWork.Manager
             }, async);
         }
 
+        /*private void UnloadAssetBundle(string path, bool immediate = false)
+        {
+            path = path.ToLower();
+
+            if (RemoveAssetBundleCache(path, immediate))
+                UnloadDependencies(path, immediate);
+        }*/
+
         /// <summary>
         /// Load all dependent AssetBundles for the given AssetBundle
         /// </summary>
@@ -407,6 +428,21 @@ namespace FrameWork.Manager
             m_LoadTask.AddLoadTask(LoaderType.Stream, fullpath, remote, completeCallback, async);
         }
 
+        private AssetBundle GetAssetBundle(string path)
+        {
+            string fullpath = path;
+            if (!path.EndsWith(ConstantData.abExtend))
+                fullpath = string.Format("{0}{1}", path, ConstantData.abExtend);
+
+            fullpath = fullpath.ToLower();
+
+            AssetBundleCache cache = null;
+            if (!m_AssetBundleCaches.TryGetValue(fullpath, out cache))
+                return null;
+
+            return cache.assetBundle;
+        }
+
         /// <summary>
         /// 卸载 assetbundle
         /// </summary>
@@ -418,6 +454,32 @@ namespace FrameWork.Manager
 
             if(RemoveAssetBundleCache(path, immediate))
                 UnloadDependencies(path, immediate);
+        }
+
+        private AssetBundleCache AddAssetBundleCache(string name, AssetBundle assetbundle, bool persistent, int refCount)
+        {
+            AssetBundleCache cache;
+            if(!m_AssetBundleCaches.TryGetValue(name, out cache))
+            {
+                cache = new AssetBundleCache(name, assetbundle, persistent, refCount);
+                m_AssetBundleCaches.Add(name, cache);
+            }
+
+            return cache;
+        }
+
+        private bool RemoveAssetBundleCache(string name, bool immediate = false)
+        {
+            AssetBundleCache cache;
+            if (!m_AssetBundleCaches.TryGetValue(name, out cache))
+                return false;
+
+            --cache.refCount;
+
+            if ((0 != ConstantData.assetBundleCacheTime || immediate) && cache.canRemove)
+                UnloadAssetBundleCache(name);
+
+            return true;
         }
 
         /// <summary>
@@ -446,7 +508,7 @@ namespace FrameWork.Manager
             return true;
         }
 
-        private bool RemoveAssetBundleCache(string name, bool immediate = false)
+        /*private bool RemoveAssetBundleCache(string name, bool immediate = false)
         {
             AssetBundleCache cache = null;
             if (!m_AssetBundleCaches.TryGetValue(name, out cache))
@@ -458,7 +520,7 @@ namespace FrameWork.Manager
                 UnloadAssetBundleCache(name);
 
             return true;
-        }
+        }*/
 
         private bool CheckAssetBundle(string path)
         {
