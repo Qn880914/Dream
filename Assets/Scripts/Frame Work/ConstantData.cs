@@ -6,7 +6,13 @@ namespace FrameWork
 {
     internal static class ConstantData
     {
+        public static string version = "0.0.1";
+
         public readonly static string abExtend = ".ab";
+
+        public readonly static string assetBundleManifestName = "data";
+
+        public readonly static string assetBundleMappingName = "assetbundle_mapping";
 
         public readonly static bool enableMD5Name = false;
 
@@ -14,8 +20,6 @@ namespace FrameWork
         public readonly static bool enableCheckUpdate = false;
 
         public readonly static bool enableAssetBundle = false;
-
-        public readonly static string assetBundleManifestName = "data";
 
 
         /// <summary>

@@ -1,9 +1,8 @@
 ﻿using FrameWork.Resource;
 using FrameWork.Utility;
 using System.Collections.Generic;
-using UnityEngine;
 using System.IO;
-using FrameWork.Utility;
+using UnityEngine;
 
 namespace FrameWork.Manager
 {
@@ -50,6 +49,23 @@ namespace FrameWork.Manager
                 LoadVersion();
         }
 
+        public void Update()
+        {
+            m_LoadTask.OnUpdate();
+
+            UpdateAssetBundleCache();
+        }
+
+        private void UpdateAssetBundleCache()
+        {
+            if (ConstantData.assetBundleCacheTime == 0 || Time.realtimeSinceStartup - m_LastClearCacheTime < ConstantData.assetBundleCacheTime)
+                return;
+
+            m_LastClearCacheTime = Time.realtimeSinceStartup;
+
+            ClearAssetBundleCache(true, true, false);
+        }
+
         private void LoadVersion()
         {
             if (ConstantData.enableMD5Name)
@@ -71,7 +87,30 @@ namespace FrameWork.Manager
 
                     string text = System.Text.Encoding.UTF8.GetString(bytes);
                     JSONClass json = JSONNode.Parse(text) as JSONClass;
-                });
+
+                    SetVersionData(json["list"] as JSONClass, !hasPatch);
+                }, false);
+
+                if(hasPatch)
+                {
+                    LoadStream(pathPatch, (data)=>
+                    {
+                        byte[] bytes = data as byte[];
+                        if(null == bytes)
+                        {
+                            UnityEngine.Debug.Log("[LoaderManager.LoadVersion] Load Patch version Failed!");
+                            return;
+                        }
+
+                        string text = System.Text.Encoding.UTF8.GetString(bytes);
+                        JSONClass json = JSONNode.Parse(text) as JSONClass;
+
+                        if (string.Equals(json["version"], ConstantData.version))
+                            json = json["list"] as JSONClass;
+
+                        SetPatchData(json);
+                    }, false, false, true);
+                }
             }
             else
                 LoadAssetBundleManifest();
@@ -93,6 +132,22 @@ namespace FrameWork.Manager
                 LoadAssetBundleManifest();
         }
 
+        private void SetPatchData(JSONClass json, bool clear = false)
+        {
+            if (clear)
+                Clear();
+
+            m_DicAssetBundlePathMapMD5Download.Clear();
+
+            if(null != json)
+            {
+                foreach (KeyValuePair<string, JSONNode> item in json)
+                    m_DicAssetBundlePathMapMD5Download.Add(item.Key, item.Value["md5"]);
+            }
+
+            LoadAssetBundleManifest();
+        }
+
         private void LoadAssetBundleManifest()
         {
             if(null != m_AssetBundleManifest)
@@ -110,8 +165,79 @@ namespace FrameWork.Manager
                 if (null != cache)
                     m_AssetBundleManifest = cache.LoadAsset<AssetBundleManifest>("AssetBundleManifest");
 
+                UnloadAssetBundle(ConstantData.assetBundleManifestName, true);
 
+                if(null != m_AssetBundleManifest)
+                {
+                    string[] bundleNames = m_AssetBundleManifest.GetAllAssetBundles();
+                    int count = bundleNames.Length;
+                    for(int i = 0; i< count; ++ i)
+                    {
+                        string name = bundleNames[i];
+                        if (m_AssetBundleNames.Contains(name))
+                        {
+                            UnityEngine.Debug.Log(string.Format("[LoaderManager.LoadAssetBundleManifest] Error With Repeat Name : {0}", name));
+                        }
+                        m_AssetBundleNames.Add(name);
+                    }
+                }
+            }, false, false, false);
+
+            LoadAssetFromAssetBundle(ConstantData.assetBundleMappingName, ConstantData.assetBundleMappingName, typeof(AssetBundleMapping), (data)=>
+            {
+                m_AssetBundleMapping = data as AssetBundleMapping;
+                if (null != m_AssetBundleMapping)
+                    m_AssetBundleMapping.Init();
+            }, false, false, true);
+
+            LoadAssetBundle("shader", null, false, true);
+
+            WarmupShader();
+        }
+
+        private void WarmupShader()
+        {
+            if (!ConstantData.enableAssetBundle)
+                return;
+
+            LoadAssetBundle("shader", (data)=>
+            {
+                AssetBundle assetbundle = data as AssetBundle;
+                if (null == assetbundle)
+                    return;
+
+                ShaderVariantCollection variant = assetbundle.LoadAsset<ShaderVariantCollection>("warmshader");
+                if (null != variant)
+                    variant.WarmUp();
             });
+        }
+
+        private void RefreshShader(AssetBundle assetbundle)
+        {
+            if (assetbundle.isStreamedSceneAssetBundle)
+                return;
+        }
+
+        private string GetResourceName(string name)
+        {
+            string path = name;
+            if(ConstantData.enableMD5Name)
+            {
+                string md5 = string.Empty;
+                if(m_DicAssetBundlePathMapMD5Download.TryGetValue(name, out md5))
+                {
+                    path = SearchPath(md5, true, true, true);
+                    if (!string.IsNullOrEmpty(path))
+                        return path;
+                }
+
+                if (m_DicAssetBundlePathMapMD5Origin.TryGetValue(name, out md5))
+                    path = md5;
+                else
+                    UnityEngine.Debug.Log(string.Format("[LoaderManager.GetResourceName] Get Md5 Failed : {0}", name));
+            }
+
+            return SearchPath(path, false, true, true);
         }
 
         private void AddSearchPath(string path)
@@ -177,6 +303,31 @@ namespace FrameWork.Manager
                 LoadAssetBundleDependencies(path, async, persistent, out asyncInfact);
                 async = asyncInfact;
             }
+
+            if (CheckAssetBundleCache(path, completeCallback, persistent, async))
+                return;
+
+            if (m_LoadTask.CheckImmediateLoad(path, completeCallback))
+                return;
+
+            m_LoadTask.AddLoadTask(LoaderType.BundleAsset, path, null, (data)=>
+            {
+                AssetBundle assetbundle = data as AssetBundle;
+                AssetBundleCache cache = null;
+
+                if(null != assetbundle)
+                {
+                    RefreshShader(assetbundle);
+
+                    int refCount = m_LoadTask.GetWaitLoadingCount(path) + 1;
+                    cache = AddAssetBundleCache(path, assetbundle, persistent, refCount);
+                }
+
+                if (null != completeCallback)
+                    completeCallback(cache);
+
+                m_LoadTask.WaitLoadingFinish(path, cache);
+            }, async);
         }
 
         /// <summary>
@@ -204,6 +355,45 @@ namespace FrameWork.Manager
                 if (m_AssetBundleCaches.ContainsKey(dependencies[i]))
                     asyncInFact = false;
             }
+        }
+
+        /// <summary>
+        ///  从 assetbundle 中加载资源
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="name"></param>
+        /// <param name="type"></param>
+        /// <param name="completeCallback"></param>
+        /// <param name="async"></param>
+        /// <param name="persistent"></param>
+        /// <param name="unload"></param>
+        private void LoadAssetFromAssetBundle(string path, string name, System.Type type, LoadAction<object> completeCallback, bool async, bool persistent, bool unload = false)
+        {
+            string fullpath = path;
+            if (!path.EndsWith(ConstantData.abExtend))
+                fullpath = string.Format("{0}{1}", path, ConstantData.abExtend);
+
+            fullpath = fullpath.ToLower();
+
+            LoadAssetBundle(fullpath, (data)=>
+            {
+                AssetBundleCache cache = data as AssetBundleCache;
+                Object asset = null;
+                if(null != cache)
+                {
+                    if (!string.IsNullOrEmpty(name))
+                        asset = cache.LoadAsset(name, type);
+                }
+
+                if (null == asset)
+                    UnityEngine.Debug.Log(string.Format("[LoaderManager.LoadAssetFromAssetBundle] Not Found Asset is null with -> Path : {0}, Name : {1}", path, name));
+
+                if (null != completeCallback)
+                    completeCallback(asset);
+
+                if (unload)
+                    UnloadAssetBundle(path);
+            }, async, persistent);
         }
 
         private void LoadStream(string path, LoadAction<object> completeCallback, bool async = true, bool remote = false, bool isFullPath = false)
@@ -347,6 +537,7 @@ namespace FrameWork.Manager
 
             System.GC.Collect();
         }
+
     }
 }
 
