@@ -27,7 +27,7 @@ namespace FrameWork.Resource
             //string path = 
         }
 
-        protected override void Reset()
+        public override void Reset()
         {
             base.Reset();
 

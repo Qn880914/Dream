@@ -51,7 +51,7 @@ namespace FrameWork
             get
             {
                 if(string.IsNullOrEmpty(m_DecompressPath))
-                    m_DecompressPath = string.Format("{0}/{1}", Application.persistentDataPath, abPath);
+                    m_DecompressPath = string.Format("{0}/{1}", Application.persistentDataPath, abExtend);
 
                 return m_DecompressPath;
             }

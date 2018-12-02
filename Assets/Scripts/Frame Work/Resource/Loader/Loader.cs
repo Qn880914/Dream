@@ -68,7 +68,7 @@ namespace FrameWork.Resource
             Reset();
         }
 
-        protected virtual void Reset()
+        public virtual void Reset()
         {
             m_Path = string.Empty;
             m_CompleteCallback = null;
@@ -83,17 +83,13 @@ namespace FrameWork.Resource
         protected void OnProgress(float progress)
         {
             if(null != m_ActionProgress)
-            {
                 m_ActionProgress(this, progress);
-            }
         }
 
         protected void OnCompleted(object data)
         {
             if(null != m_CompleteCallback)
-            {
                 m_CompleteCallback(this, data);
-            }
         }
     }
 }

@@ -58,7 +58,7 @@ namespace FrameWork.Manager
 
         private void UpdateAssetBundleCache()
         {
-            if (ConstantData.assetBundleCacheTime == 0 || Time.realtimeSinceStartup - m_LastClearCacheTime < ConstantData.assetBundleCacheTime)
+            if (0 == ConstantData.assetBundleCacheTime || Time.realtimeSinceStartup - m_LastClearCacheTime < ConstantData.assetBundleCacheTime)
                 return;
 
             m_LastClearCacheTime = Time.realtimeSinceStartup;
