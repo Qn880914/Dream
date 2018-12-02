@@ -16,6 +16,7 @@ namespace FrameWork.Resource
         private class LoaderWaitList
         {
             public Loader loader;
+
             public List<LoadAction<object>> callbacks;
         }
 
