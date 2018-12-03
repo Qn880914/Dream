@@ -2,8 +2,6 @@
 using FrameWork.Scene;
 using FrameWork.StateMachine;
 using FrameWork.Utility;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace FrameWork.Manager
@@ -28,7 +26,16 @@ namespace FrameWork.Manager
 
         private void LoadScene(LoadSceneEvent param)
         {
-            m_StateMachine.SetState(param.type);
+            //m_StateMachine.SetState(param.type);
+            switch (param.type)
+            {
+                case SceneType.Login:
+                    break;
+                case SceneType.Main:
+                    break;
+                case SceneType.Battle:
+                    break;
+            }
         }
 
         public void Clear()

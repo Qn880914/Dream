@@ -50,7 +50,7 @@ namespace FrameWork.Manager
                 LoadVersion();
         }
 
-        public void Update()
+        public void OnUpdate()
         {
             m_LoadTask.OnUpdate();
 
@@ -586,6 +586,42 @@ namespace FrameWork.Manager
                 }
             }
 
+        }
+
+        private void BeginFrontLoad()
+        {
+            m_LoadTask.BeginFrontLoad();
+        }
+
+        public void LoadScene(string name, UnityAction<float> progressCallback, UnityAction<object> completeCallback, bool async = true)
+        {
+            BeginFrontLoad();
+
+            m_LoadTask.AddLoadTask(LoaderType.Scene, "Empty", null, null, async);
+
+            if(ConstantData.enableAssetBundle)
+            {
+                string path = string.Format("Scene/{0}", name);
+                LoadAssetBundle(path, (data)=> 
+                {
+                    m_LoadTask.AddLoadTask(LoaderType.Scene, path, null, (_data)=> 
+                    {
+                        if (null != completeCallback)
+                            completeCallback(_data);
+
+                        UnloadAssetBundle(path);
+                    }, async);
+                });
+            }
+            else
+                m_LoadTask.AddLoadTask(LoaderType.Scene, name, null, completeCallback, async);
+
+            StartFrontLoad(progressCallback);
+        }
+
+        public void StartFrontLoad(UnityAction<float> progress)
+        {
+            m_LoadTask.StartFrontLoad(progress);
         }
 
         private void Clear()

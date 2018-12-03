@@ -31,7 +31,7 @@ namespace FrameWork.Resource
             }
         }
 
-        private LoadAction<float> m_ProgressCallback;
+        private UnityAction<float> m_ProgressCallback;
 
         /// <summary>
         /// 当前正在加载的 loader
@@ -243,7 +243,7 @@ namespace FrameWork.Resource
             m_State = LoadState.Waiting;
         }
 
-        public void StartFrontLoad(LoadAction<float> action)
+        public void StartFrontLoad(UnityAction<float> action)
         {
             m_ProgressCallback = action;
             if (m_State != LoadState.Waiting)

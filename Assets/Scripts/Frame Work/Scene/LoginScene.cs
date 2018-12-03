@@ -31,11 +31,10 @@ namespace FrameWork.Scene
 
         public override void OnEnter()
         {
-            /*LoadSceneEvent evt = new LoadSceneEvent();
-            evt.type = SceneType.Login;
-            evt.Fire();*/
-
-            LoaderManager
+            ResourceManager.instance.LoadScene("Login", null, (data)=> 
+            {
+                m_StateMachine.SetState(LoginSceneType.Normal);
+            }, false);
         }
 
         public override void OnExit()
@@ -45,7 +44,7 @@ namespace FrameWork.Scene
 
         public override void OnUpdate(float deltaTime)
         {
-            throw new System.NotImplementedException();
+            //throw new System.NotImplementedException();
         }
     }
 

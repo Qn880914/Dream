@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using FrameWork.Manager;
 
 namespace FrameWork.Scene
 {
@@ -8,7 +9,7 @@ namespace FrameWork.Scene
     {
         public override void OnEnter()
         {
-            throw new System.NotImplementedException();
+            ResourceManager.instance.LoadScene("Login", null, null, false);
         }
 
         public override void OnExit()

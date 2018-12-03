@@ -8,6 +8,7 @@ public class IGGApplication : MonoBehaviour
 {
     private void Awake()
     {
+        DontDestroyOnLoad(this.gameObject);
     }
 
     // Use this for initialization
@@ -20,5 +21,6 @@ public class IGGApplication : MonoBehaviour
 	void Update ()
     {
         SceneManager.instance.OnUpdate();
+        LoaderManager.instance.OnUpdate();
     }
 }

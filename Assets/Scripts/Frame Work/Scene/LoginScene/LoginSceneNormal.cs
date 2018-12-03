@@ -4,7 +4,7 @@
     {
         public override void OnEnter()
         {
-            throw new System.NotImplementedException();
+            //throw new System.NotImplementedException();
         }
 
         public override void OnExit()
@@ -14,7 +14,7 @@
 
         public override void OnUpdate(float deltaTime)
         {
-            throw new System.NotImplementedException();
+            //throw new System.NotImplementedException();
         }
     }
 }
