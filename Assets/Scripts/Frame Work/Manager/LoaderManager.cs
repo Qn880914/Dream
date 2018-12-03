@@ -3,6 +3,7 @@ using FrameWork.Utility;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace FrameWork.Manager
 {
@@ -338,8 +339,6 @@ namespace FrameWork.Manager
 
                 if (null != completeCallback)
                     completeCallback(cache);
-
-                m_LoadTask.WaitLoadingFinish(path, cache);
             }, async);
         }
 
@@ -417,7 +416,7 @@ namespace FrameWork.Manager
             }, async, persistent);
         }
 
-        private void LoadStream(string path, LoadAction<object> completeCallback, bool async = true, bool remote = false, bool isFullPath = false)
+        private void LoadStream(string path, UnityAction<object> completeCallback, bool async = true, bool remote = false, bool isFullPath = false)
         {
             string fullpath = path;
             if (!remote && !isFullPath)

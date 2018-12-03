@@ -13,9 +13,10 @@ namespace FrameWork.Resource
             Finish,     // 加载完成
         }
 
-        private UnityAction<Loader, float> m_ActionProgress;
+        private UnityAction<float> m_ActionProgress;
 
-        private UnityAction<Loader, object> m_CompleteCallback;
+        private UnityAction<object> m_CompleteCallback;
+        public UnityAction<object> completeCallbck { get { return m_CompleteCallback; } set { m_CompleteCallback = value; } }
 
         /// 加载器类型
         protected LoaderType m_Type;
@@ -43,8 +44,8 @@ namespace FrameWork.Resource
             m_Type = type;
         }
 
-        public virtual void Init(string path, object param, UnityAction<Loader, float> actionProgress,
-            UnityAction<Loader, object> completeCallback, bool async = true)
+        public virtual void Init(string path, object param, UnityAction<float> actionProgress,
+            UnityAction<object> completeCallback, bool async = true)
         {
             m_State = LoaderState.None;
             m_Path = path;
@@ -82,14 +83,19 @@ namespace FrameWork.Resource
 
         protected void OnProgress(float progress)
         {
+            if (!m_Async)
+                return;
+
             if(null != m_ActionProgress)
-                m_ActionProgress(this, progress);
+                m_ActionProgress(progress);
         }
 
         protected void OnCompleted(object data)
         {
+            m_State = LoaderState.Finish;
+
             if(null != m_CompleteCallback)
-                m_CompleteCallback(this, data);
+                m_CompleteCallback(data);
         }
     }
 }

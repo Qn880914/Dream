@@ -13,13 +13,6 @@ namespace FrameWork.Resource
             Loading,
         }
 
-        private class LoaderWaitList
-        {
-            public Loader loader;
-
-            public List<LoadAction<object>> callbacks;
-        }
-
         private class AsyncCallbackInfo
         {
             private LoadAction<object> m_CompleteCallback;
@@ -34,49 +27,65 @@ namespace FrameWork.Resource
             public void OnComplete()
             {
                 if(null != m_CompleteCallback)
-                {
                     m_CompleteCallback(m_Data);
-                }
             }
         }
 
-        private LoadAction<float> m_ActionProgress;
+        private LoadAction<float> m_ProgressCallback;
 
+        /// <summary>
+        /// 当前正在加载的 loader
+        ///     AddLoadTask  : 同步则加入这个队列
+        /// </summary>
         private List<Loader> m_Loaders = new List<Loader>();
 
-        private Queue<Loader> m_LoaderQueue = new Queue<Loader>();
+        /// <summary>
+        /// 异步加载等待队列
+        /// </summary>
+        private Queue<Loader> m_LoaderQueueAsync = new Queue<Loader>();
 
+        /// <summary>
+        /// // 异步加载等待 loader
+        ///     stirng : resource Path
+        /// </summary>
+        private Dictionary<string, Loader> m_DicLoaders = new Dictionary<string, Loader>();
+
+        /// <summary>
+        /// 加载状态
+        ///     LoadState.Waiting
+        ///     LoadState.Loading
+        /// </summary>
         private LoadState m_State = LoadState.Loading;
 
-        private int m_Count;
+        /// 异步加载 完成数量
+        private int m_CountAsync;
 
-        private int m_TotalCount;
-
-        private Dictionary<string, LoaderWaitList> m_Waits = new Dictionary<string, LoaderWaitList>();
+        /// 异步加载 数量
+        private int m_TotalCountAsync;
 
         private List<AsyncCallbackInfo> m_AsyncCallbackInfos = new List<AsyncCallbackInfo>();
-
-        public LoadTask() { }
-
-        public void Clear() { }
 
         public void OnUpdate()
         {
             int count = m_Loaders.Count;
-            for(int i = count - 1; i > -1; -- i)
+            for (int i = count - 1; i > -1; -- i)
             {
                 Loader loader = m_Loaders[i];
-                if(loader.isDone)
+                loader.Update();
+
+                if (loader.isDone)
                 {
+                    if (m_DicLoaders.ContainsKey(loader.path))
+                        m_DicLoaders.Remove(loader.path);
+
                     m_Loaders.RemoveAt(i);
-                    if(!m_LoaderQueue.Contains(loader))
-                    {
+                    if(!m_LoaderQueueAsync.Contains(loader))
                         LoaderPool.Release(loader);
-                    }
 
                     if(loader.async)
                     {
-                        ++m_Count;
+                        ++m_CountAsync;
+                        m_DicLoaders.Remove(loader.path);
                         RefreshLoadProgress(0f);
                     }
 
@@ -95,32 +104,28 @@ namespace FrameWork.Resource
             if (m_Loaders.Count > 0)
                 return;
 
-            if(m_LoaderQueue.Count > 0)
+            if(m_LoaderQueueAsync.Count > 0)
             {
-                Loader loader = m_LoaderQueue.Dequeue();
+                Loader loader = m_LoaderQueueAsync.Dequeue();
                 m_Loaders.Add(loader);
 
                 if(!loader.isDone)
-                {
                     loader.Start();
-                }
 
-                ++m_Count;
+                ++m_CountAsync;
                 RefreshLoadProgress(0f);
             }
             else
             {
-                m_Count = 0;
-                m_TotalCount = 0;
+                m_CountAsync = 0;
+                m_TotalCountAsync = 0;
             }
         }
 
         private void UpdateAsyncCallback()
         {
             for (int i = 0; i < m_AsyncCallbackInfos.Count; ++i)
-            {
                 m_AsyncCallbackInfos[i].OnComplete();
-            }
 
             m_AsyncCallbackInfos.Clear();
         }
@@ -128,8 +133,8 @@ namespace FrameWork.Resource
         private void RefreshLoadProgress(float addRate)
         {
             float rate = addRate;
-            int count = m_TotalCount;
-            int index = Mathf.Max(0, m_Count - 1);
+            int count = m_TotalCountAsync;
+            int index = Mathf.Max(0, m_CountAsync - 1);
 
             if (count == 0)
             {
@@ -137,28 +142,22 @@ namespace FrameWork.Resource
                 count = 1;
             }
             else
-            {
-                rate = (index + addRate) / m_TotalCount;
-            }
+                rate = (index + addRate) / m_TotalCountAsync;
 
-            if (m_ActionProgress != null)
+            if (null != m_ProgressCallback)
             {
-                m_ActionProgress(rate);
+                m_ProgressCallback(rate);
 
                 if (rate >= 1f)
-                {
-                    m_ActionProgress = null;
-                }
+                    m_ProgressCallback = null;
             }
         }
 
         public bool CheckImmediateLoad(string path, LoadAction<object> callback)
         {
-            Loader loader = CheckWaitLoading(path, callback);
-            if (null == loader)
-            {
+            Loader loader;
+            if (!m_DicLoaders.TryGetValue(path, out loader))
                 return false;
-            }
 
             if (loader.state == Loader.LoaderState.None)
             {
@@ -173,107 +172,49 @@ namespace FrameWork.Resource
         public void AddAsyncCallback(LoadAction<object> callback, object data)
         {
             if (null == callback)
-            {
                 return;
-            }
 
             m_AsyncCallbackInfos.Add(new AsyncCallbackInfo(callback, data));
         }
 
-        private Loader CheckWaitLoading(string path, LoadAction<object> callback)
-        {
-            LoaderWaitList waitList;
-            if (!m_Waits.TryGetValue(path, out waitList))
-            {
-                m_Waits.Add(path, new LoaderWaitList());
-                return null;
-            }
-
-            List<LoadAction<object>> callbacks = waitList.callbacks;
-            if (null == callbacks)
-            {
-                callbacks = new List<LoadAction<object>>();
-                waitList.callbacks = callbacks;
-            }
-
-            callbacks.Add(callback);
-            return waitList.loader;
-        }
-
-        private void SetWaitLoader(string path, Loader loader)
-        {
-            LoaderWaitList waitList;
-            if (m_Waits.TryGetValue(path, out waitList))
-            {
-                waitList.loader = loader;
-            }
-            else
-            {
-                UnityEngine.Debug.Log(string.Format("SetWaitLoader:{0}, have no wait list ....", path));
-            }
-        }
-
-        public void WaitLoadingFinish(string path, object data)
-        {
-            LoaderWaitList waitList;
-            if (!m_Waits.TryGetValue(path, out waitList))
-            {
-                return;
-            }
-
-            List<LoadAction<object>> callbacks = waitList.callbacks;
-            if (null != callbacks)
-            {
-                for (int i = 0; i < callbacks.Count; ++i)
-                {
-                    LoadAction<object> callback = callbacks[i];
-                    if (null != callback)
-                    {
-                        callback(data);
-                    }
-                }
-
-                callbacks.Clear();
-            }
-
-            m_Waits.Remove(path);
-        }
-
         public int GetWaitLoadingCount(string path)
         {
-            LoaderWaitList waitList;
-            if (!m_Waits.TryGetValue(path, out waitList))
-            {
+            Loader loader;
+            if (!m_DicLoaders.TryGetValue(path, out loader))
                 return 0;
-            }
 
-            return waitList.callbacks.Count;
+            return loader.completeCallbck.GetInvocationList().Length;
         }
 
         private void ClearLoader()
         {
             for (int i = 0; i < m_Loaders.Count; ++i)
-            {
                 m_Loaders[i].Stop();
-            }
 
             for (int i = 0; i < m_Loaders.Count; ++i)
-            {
                 LoaderPool.Release(m_Loaders[i]);
-            }
 
-            for (int i = 0; i < m_LoaderQueue.Count; ++i)
-            {
-                LoaderPool.Release(m_LoaderQueue.Dequeue());
-            }
+            for (int i = 0; i < m_LoaderQueueAsync.Count; ++i)
+                LoaderPool.Release(m_LoaderQueueAsync.Dequeue());
 
             m_Loaders.Clear();
-            m_LoaderQueue.Clear();
+            m_LoaderQueueAsync.Clear();
+            m_DicLoaders.Clear();
         }
 
-        private Loader AddLoadTask(LoaderType type, string path, object param, UnityAction<Loader, object> callback, bool async)
+        public Loader AddLoadTask(LoaderType type, string path, object param, UnityAction<object> callback, bool async)
         {
-            Loader loader = LoaderPool.Get(type);
+            Loader loader;
+            if (type != LoaderType.Scene && type != LoaderType.BundleAsset)
+            {
+                if (m_DicLoaders.TryGetValue(path, out loader))
+                {
+                    loader.completeCallbck += callback;
+                    return loader;
+                }
+            }
+
+            loader = LoaderPool.Get(type);
             loader.Init(path, param, OnLoadProgress, callback, async);
 
             if (!async)
@@ -283,49 +224,18 @@ namespace FrameWork.Resource
             }
             else
             {
-                m_LoaderQueue.Enqueue(loader);
-                if (m_TotalCount != 0)
-                {
-                    ++m_TotalCount;
-                }
+                if (type != LoaderType.Scene && type != LoaderType.BundleAsset)
+                    m_DicLoaders.Add(path, loader);
+
+                m_LoaderQueueAsync.Enqueue(loader);
+                if (m_TotalCountAsync != 0)
+                    ++m_TotalCountAsync;
             }
 
             if (0 == m_Loaders.Count)
-            {
                 CheckNextTask();
-            }
 
             return loader;
-        }
-
-        public void AddLoadTask(LoaderType type, string path, object param, LoadAction<object> callback, bool async)
-        {
-            if (type != LoaderType.Scene && type != LoaderType.Bundle)
-            {
-                if (CheckWaitLoading(path, callback) != null)
-                {
-                    return;
-                }
-            }
-
-            Loader ldr = AddLoadTask(type, path, param, (loader, data) =>
-            {
-                if (callback != null)
-                {
-                    callback(data);
-                }
-
-                if (type != LoaderType.Scene && type != LoaderType.Bundle)
-                {
-                    WaitLoadingFinish(path, data);
-                }
-            }, async);
-
-            //只有异步加载才有所谓等待列表
-            if (async && type != LoaderType.Scene)
-            {
-                SetWaitLoader(path, ldr);
-            }
         }
 
         public void BeginFrontLoad()
@@ -333,33 +243,28 @@ namespace FrameWork.Resource
             m_State = LoadState.Waiting;
         }
 
-        public void StartFrontLoad(LoadAction<float> progress)
+        public void StartFrontLoad(LoadAction<float> action)
         {
-            m_ActionProgress = progress;
+            m_ProgressCallback = action;
             if (m_State != LoadState.Waiting)
-            {
                 return;
-            }
 
             m_State = LoadState.Loading;
 
-            m_Count = 0;
-            m_TotalCount = m_LoaderQueue.Count;
+            m_CountAsync = 0;
+            m_TotalCountAsync = m_LoaderQueueAsync.Count;
 
             CheckNextTask(true);
-        }
+        }        
 
-        
-
-        private void OnLoadProgress(Loader loader, float rate)
+        private void OnLoadProgress(float rate)
         {
-            if (!loader.async)
-            {
-                return;
-            }
-
             RefreshLoadProgress(rate);
         }
 
+        public void Clear()
+        {
+            ClearLoader();
+        }
     }
 }
