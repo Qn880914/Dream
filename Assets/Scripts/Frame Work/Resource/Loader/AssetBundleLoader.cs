@@ -3,12 +3,18 @@ using UnityEngine;
 
 namespace FrameWork.Resource
 {
+    /// <summary>
+    /// AssetBundle loader.
+    /// </summary>
     public class AssetBundleLoader : Loader
     {
         private AssetBundleCreateRequest m_AssetBundleCreateRequest;
 
         private LZMACompressRequest m_DecompressRequest = null;
 
+        /// <summary>
+        /// whether nedd depack
+        /// </summary>
         private bool m_NeedDepack = false;
 
         private int m_CurrentStage = 0;

@@ -1,14 +1,14 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 
 namespace FrameWork.Utility
 {
+    /// <summary>
+    /// Disposable.
+    /// </summary>
     public class Disposable : IDisposable
     {
         // Flag: Has Dispose already been called?
-        private bool disposed = false;
+        private bool m_Disposed = false;
 
         // Public implementation of Dispose pattern callable by consumers.
         public void Dispose()
@@ -19,7 +19,7 @@ namespace FrameWork.Utility
 
         protected virtual void Dispose(bool disposing)
         {
-            if(disposed)
+            if(m_Disposed)
             {
                 return;
             }
@@ -32,7 +32,7 @@ namespace FrameWork.Utility
 
             // Free any unmanaged objects here.
             //
-            disposed = true;
+            m_Disposed = true;
         }
     }
 }

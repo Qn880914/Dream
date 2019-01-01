@@ -30,6 +30,7 @@ namespace FrameWork.Utility
             if(0 == m_Stack.Count)
             {
                 element = new T();
+                ++countAll;
             }
             else
             {

@@ -31,6 +31,7 @@ namespace FrameWork.Manager
 
         /// 所有的 Assetbundle 名字列表         AssetBundleManifest.GetAllAssetBundles();
         private List<string> m_AssetBundleNames = new List<string>();
+        public List<string> assetBundleNames { get { return m_AssetBundleNames; } }
 
         /// AssetBundle 缓存队列
         private Dictionary<string, AssetBundleCache> m_AssetBundleCaches = new Dictionary<string, AssetBundleCache>();
