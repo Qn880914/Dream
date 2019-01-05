@@ -3,7 +3,7 @@ using UnityEngine.Events;
 
 namespace FrameWork.Manager
 {
-    public class ResourceManager : Singleton<ResourceManager>
+    public class ResourceManager : Singleton<ResourceManager>, IManage
     {
         public void LoadScene(string name, UnityAction<float> progressCallback, UnityAction<object> completeCallback, bool async)
         {

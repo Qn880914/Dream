@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace FrameWork.Manager
 {
-    public class SceneManager : Singleton<SceneManager>
+    public class SceneManager : Singleton<SceneManager>, IManage
     {
         private StateMachine<SceneType, SceneManager> m_StateMachine = new StateMachine<SceneType, SceneManager>();
 

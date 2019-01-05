@@ -7,7 +7,7 @@ using UnityEngine.Events;
 
 namespace FrameWork.Manager
 {
-    public class LoaderManager : Singleton<LoaderManager>
+    public class LoaderManager : Singleton<LoaderManager>, IManage
     {
         public delegate void LoadProgressCallback(float rage);
 

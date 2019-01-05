@@ -2,10 +2,11 @@
 using FrameWork.Utility;
 using System;
 using System.Collections.Generic;
+using FrameWork;
 
 namespace FrameWork.Manager
 {
-    public class EventManager : Singleton<EventManager>
+    public class EventManager : Singleton<EventManager>, IManage
     {
         private Dictionary<Type, System.Delegate> delegates = new Dictionary<Type, System.Delegate>();
 
