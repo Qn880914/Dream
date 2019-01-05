@@ -1,8 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
-namespace FrameWork.Utility
+﻿namespace FrameWork.Utility
 {
     public abstract class Singleton<T> : Disposable where T : Singleton<T>
     {

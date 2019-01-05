@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace FrameWork
 {
@@ -71,5 +69,22 @@ namespace FrameWork
 
         /// assetbundle 缓存时间
         public static float assetBundleCacheTime = 10;
+
+
+
+
+
+
+        public static bool debugMode = false;
+
+        public static string appName { get { return "Dream"; } }
+
+        public static string rootPath
+        {
+            get
+            {
+                return Application.dataPath + "/" + appName;
+            }
+        }
     }
 }
